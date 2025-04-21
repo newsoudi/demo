@@ -1,4 +1,4 @@
-<?php
+// app/Http/Controllers/TeamMemberController.php
 
 namespace App\Http\Controllers;
 
@@ -8,39 +8,42 @@ use Illuminate\Http\Request;
 
 class TeamMemberController extends Controller
 {
-    // عرض جميع الأعضاء
-    public function index()
+    // ...
+
+    // عرض نموذج تعديل عضو
+    public function edit($id)
     {
-        $members = TeamMember::with('teamGroup')->get();  // جلب جميع الأعضاء مع المجموعات المرتبطة بهم
-        return view('team-members.index', compact('members'));
+        $member = TeamMember::findOrFail($id);
+        $groups = TeamGroup::all();
+        return view('team-members.edit', compact('member', 'groups'));
     }
 
-    // عرض نموذج إضافة عضو جديد
-    public function create()
+    // معالجة تحديث بيانات العضو
+    public function update(Request $request, $id)
     {
-        $groups = TeamGroup::all();  // جلب جميع المجموعات
-        return view('team-members.create', compact('groups'));
-    }
+        $member = TeamMember::findOrFail($id);
 
-    // تخزين عضو جديد في قاعدة البيانات
-    public function store(Request $request)
-    {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:team_members',
-            'phone' => 'nullable|string|max:15',
-            'password' => 'required|string|min:8|confirmed',
-            'team_group_id' => 'required|exists:team_groups,id',  // التحقق من المجموعة
+            'name'           => 'required|string|max:255',
+            'email'          => 'required|email|unique:team_members,email,' . $id,
+            'phone'          => 'nullable|string|max:15',
+            'status'         => 'required|in:pending,active,suspended',
+            'team_group_id'  => 'required|exists:team_groups,id',
         ]);
 
-        TeamMember::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => bcrypt($request->password),
-            'team_group_id' => $request->team_group_id,
-        ]);
+        $member->update($request->only('name','email','phone','status','team_group_id'));
 
-        return redirect()->route('team-members.index')->with('success', 'تم إضافة العضو بنجاح');
+        return redirect()->route('team-members.index')
+                         ->with('success', 'تم تحديث بيانات العضو بنجاح');
+    }
+
+    // حذف العضو
+    public function destroy($id)
+    {
+        $member = TeamMember::findOrFail($id);
+        $member->delete();
+
+        return redirect()->route('team-members.index')
+                         ->with('success', 'تم حذف العضو بنجاح');
     }
 }
